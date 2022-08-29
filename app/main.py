@@ -4,8 +4,9 @@ from app.models import UserReg, UserIn, AdviceVeg
 from app.hashing import Hasher
 from typing import List
 UserUpdate = User_veg.get_pydantic(exclude={"id", "email", "password"})
+# UserOut = User_veg.get_pydantic(exclude={"password"})
 app = FastAPI(title="FastAPI, Docker")
-@app.post("/user/register/", summary="endpoints(3.2) for User_veg")
+@app.post("/user/register/", summary="endpoint(3.2) for User_veg")
 async def create_user(user_in: UserReg):
     """
     Здесь перевод всех полей:
@@ -36,27 +37,44 @@ async def create_user(user_in: UserReg):
             user_in_db[key] = value
     await User_veg.objects.create(**user_in_db)
     return {"register": True}
-@app.get("/user/register/", response_model=List[UserReg], summary="endpoints(3.1) for User_veg")
+@app.get("/user/register/", response_model=List[UserReg], summary="endpoint(3.1) for User_veg")
 async def read_all_db():
     """
     This GET request need for register.
     """
     all_db = await User_veg.objects.all()
     return all_db
-@app.put("/user/register/{user_id}/", summary="endpoints(3.3) for User_veg")
+@app.put("/user/register/{user_id}/", summary="endpoint(3.3) for User_veg")
 async def update_user(user_id: int, user_up: UserUpdate):
     user_db = await User_veg.objects.get(pk=user_id)
     await user_db.update(**user_up.dict())
     return {"update": True}
-@app.delete("user/register/{user_id}/", summary="endpoints(3.4) for User_veg")
+@app.delete("/user/register/{user_id}/", summary="endpoint(3.4) for User_veg")
 async def delete_user(user_del: UserReg):
     pass
-@app.get("user/input/", summary="endpoints(3.5) for input")
+@app.post("/user/input/", summary="endpoints(3.5) for input")
 async def user_input(user_inp: UserIn):
-    pass
-@app.post("user/advice/", summary="endpoints(3.8) for Advice")
+    try:
+        user_in2 = user_inp.dict()
+        email_in_out = await User_veg.objects.get(User_veg.email == user_in2["email"])
+        check_password = Hasher.verify_password(user_in2["password"], email_in_out.dict()["password"])
+        if check_password:
+            return {"input": True}
+        else:
+            raise KeyError
+    except Exception as ex:
+        print("#" * 20)
+        print("mistake...):")
+        print(ex)
+        return {"input": False}
+@app.get("/user/advice/", response_model = List[AdviceVeg], summary="endpoint(3.6) for Advice")
+async def read_advice():
+    all_advice_db = await Advice.objects.all()
+    return all_advice_db
+@app.post("/user/advice/", summary="endpoint(3.8) for Advice")
 async def create_advice(vegetable: AdviceVeg):
-    pass
+    await Advice.objects.create(**vegetable.dict())
+    return {"creating_in_advice": True}
 @app.on_event("startup")
 async def startup():
     if not database.is_connected:
@@ -99,7 +117,7 @@ endpoints for register:
 
 
 endpoints for input:
-3.5)endpoints: (GET: /user/input/ - UserIn) # check user to want to input.
+3.5)endpoints: (POST: /user/input/ - UserIn) # check user to want to input.
 
 
 endpoints for Advice: # (I won't use these endpoints. These endpoints are needed for me).
