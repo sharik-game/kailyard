@@ -6,6 +6,7 @@ from typing import List
 UserUpdate = User_veg.get_pydantic(exclude={"id", "email", "password"})
 # UserOut = User_veg.get_pydantic(exclude={"password"})
 app = FastAPI(title="FastAPI, Docker")
+# endpoints for User_veg
 @app.post("/user/register/", summary="endpoint(3.2) for User_veg")
 async def create_user(user_in: UserReg):
     """
@@ -52,6 +53,10 @@ async def update_user(user_id: int, user_up: UserUpdate):
 @app.delete("/user/register/{user_id}/", summary="endpoint(3.4) for User_veg")
 async def delete_user(user_del: UserReg):
     pass
+
+
+
+# endpoints for input and for Advice
 @app.post("/user/input/", summary="endpoints(3.5) for input")
 async def user_input(user_inp: UserIn):
     try:
@@ -71,10 +76,24 @@ async def user_input(user_inp: UserIn):
 async def read_advice():
     all_advice_db = await Advice.objects.all()
     return all_advice_db
+
 @app.post("/user/advice/", summary="endpoint(3.8) for Advice")
 async def create_advice(vegetable: AdviceVeg):
     await Advice.objects.create(**vegetable.dict())
     return {"creating_in_advice": True}
+@app.post("/user/", response_model = List[AdviceVeg], summary="main(3.12) for frontend")
+async def join_tables(user_table: UserUpdate):
+    user_table_dict = user_table.dict()
+    answer = []
+    for key, value in user_table_dict.items():
+        if value:
+            advice_table = await Advice.objects.get(Advice.veg_name == key)
+            advice_dict = advice_table.dict()
+            answer.append(advice_dict)
+    return answer
+
+
+
 @app.on_event("startup")
 async def startup():
     if not database.is_connected:
